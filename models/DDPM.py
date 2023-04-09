@@ -1135,7 +1135,7 @@ if __name__ == '__main__':
         model,
         image_size = 128,
         timesteps=1000,  # number of steps
-        sampling_timesteps=250,
+        sampling_timesteps=1000,
         loss_type='l2'  # L1 or L2
     )
 
