@@ -1158,6 +1158,6 @@ if __name__ == '__main__':
     model_files = os.listdir('../results')
     if model_files != []:
         model_files.sort(key=lambda x: int(x.split('-')[1].split('.')[0]))
-        trainer.load(model_files[-1])
+        trainer.load(model_files[-1].split('-')[1].split('.')[0])
 
     trainer.train()
