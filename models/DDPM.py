@@ -6,8 +6,10 @@
 @Software: PyCharm 
 @File : DDPM.py
 """
+import os
 import math
 import copy
+
 from pathlib import Path
 from random import random
 from functools import partial
@@ -34,7 +36,6 @@ from accelerate import Accelerator
 
 from pytorch_fid.inception import InceptionV3
 from pytorch_fid.fid_score import calculate_frechet_distance
-
 
 # constants
 
@@ -474,7 +475,10 @@ class Unet(nn.Module):
         return self.final_conv(x)
 
 
-# 定义前向扩散过程的beta
+
+
+
+# 定义前向扩散过程的Tbeta
 
 # gaussian diffusion trainer class
 
@@ -821,10 +825,11 @@ class GaussianDiffusion(nn.Module):
 
     def p_losses(self, x_start, t, noise = None):
         b, c, h, w = x_start.shape
+        # 先采样噪声
         noise = default(noise, lambda: torch.randn_like(x_start))
 
         # noise sample
-
+        # 用采样得到的噪声去加噪图片
         x = self.q_sample(x_start = x_start, t = t, noise = noise)
 
         # if doing self-conditioning, 50% of the time, predict x_start from current set of times
@@ -838,7 +843,7 @@ class GaussianDiffusion(nn.Module):
                 x_self_cond.detach_()
 
         # predict and take gradient step
-
+        # 根据加噪了的图片去预测采样的噪声
         model_out = self.model(x, t, x_self_cond)
 
         if self.objective == 'pred_noise':
@@ -864,6 +869,9 @@ class GaussianDiffusion(nn.Module):
 
         img = self.normalize(img)
         return self.p_losses(img, t, *args, **kwargs)
+
+
+
 
 # dataset classes
 
@@ -1119,13 +1127,37 @@ class Trainer(object):
 if __name__ == '__main__':
 
     model = Unet(
-        dim = 64,
+        dim = 128,
         dim_mults = (1, 2, 4, 8)
     )
 
     diffusion = GaussianDiffusion(
         model,
         image_size = 128,
-        timesteps = 11,   # number of steps
-        loss_type = 'l1'    # L1 or L2
+        timesteps=1000,  # number of steps
+        sampling_timesteps=250,
+        loss_type='l2'  # L1 or L2
     )
+
+
+    trainer = Trainer(
+        diffusion,
+        '/media/node/SSD/jijunhao/data/awards',
+        train_batch_size = 16,
+        train_lr = 8e-5,
+        train_num_steps = 60000,         # total training steps
+        gradient_accumulate_every = 2,    # gradient accumulation steps
+        ema_decay = 0.995,                # exponential moving average decay
+        save_and_sample_every=1000,
+        results_folder='../results',
+        amp = True,                       # turn on mixed precision
+        calculate_fid = True,              # whether to calculate fid during training
+        convert_image_to ="RGB"
+    )
+
+    model_files = os.listdir('../results')
+    if model_files != []:
+        model_files.sort(key=lambda x: int(x.split('-')[1].split('.')[0]))
+        trainer.load(model_files[-1])
+
+    trainer.train()
