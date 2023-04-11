@@ -1135,8 +1135,8 @@ if __name__ == '__main__':
         model,
         image_size = 128,
         timesteps=1000,  # number of steps
-        sampling_timesteps=1000,
-        loss_type='l2'  # L1 or L2
+        sampling_timesteps=300,
+        loss_type='l1'  # L1 or L2
     )
 
 
@@ -1145,19 +1145,41 @@ if __name__ == '__main__':
         '/media/node/SSD/jijunhao/data/awards',
         train_batch_size = 16,
         train_lr = 8e-5,
-        train_num_steps = 60000,         # total training steps
+        train_num_steps = 80000,         # total training steps
         gradient_accumulate_every = 2,    # gradient accumulation steps
         ema_decay = 0.995,                # exponential moving average decay
         save_and_sample_every=1000,
         results_folder='../results',
-        amp = True,                       # turn on mixed precision
+        amp = False,                       # turn on mixed precision
         calculate_fid = True,              # whether to calculate fid during training
         convert_image_to ="RGB"
     )
+
 
     model_files = os.listdir('../results')
     if model_files != []:
         model_files.sort(key=lambda x: int(x.split('-')[1].split('.')[0]))
         trainer.load(model_files[-1].split('-')[1].split('.')[0])
 
-    trainer.train()
+
+    #trainer.train()
+
+    import matplotlib.animation as animation
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    samples = diffusion.p_sample_loop(shape=(1, 3, 128, 128),return_all_timesteps = True)
+
+    fig = plt.figure()
+    ims = []
+    for i in range(1000):
+        im_data=np.transpose(samples[0][i].cpu(), (1, 2, 0))
+        im_data = np.clip(im_data, 0, 1)
+        im = plt.imshow(im_data, animated=True)
+        ims.append([im])
+
+    animate = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=1000)
+    animate.save('diffusion.gif')
+    plt.show()
+    
+
