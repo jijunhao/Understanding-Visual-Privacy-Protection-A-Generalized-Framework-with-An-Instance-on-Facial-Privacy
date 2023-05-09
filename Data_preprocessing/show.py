@@ -12,17 +12,33 @@ import torch
 import matplotlib.pyplot as plt
 import cv2
 
-
 if __name__ == '__main__':
-    image="/media/node/SSD/jijunhao/CelebAMask-HQ/CelebA-HQ-img/1.jpg"
-    mask = "/media/node/SSD/jijunhao/CelebAMask-HQ/CelebAMask-HQ-mask/1.png"
-    mask_color="/media/node/SSD/jijunhao/CelebAMask-HQ/CelebAMask-HQ-mask-color/1.png"
-    img = plt.imread(image)
-    plt.imshow(img)
-    plt.show()
-    img = plt.imread(mask)
-    plt.imshow(img, cmap='gray')
-    plt.show()
-    img = plt.imread(mask_color)
-    plt.imshow(img)
+    image = "./data/CelebAMask-HQ/CelebA-HQ-img/0.jpg"
+    mask = "./data/CelebAMask-HQ/CelebAMask-HQ-mask/0.png"
+    mask_color = "./data/CelebAMask-HQ/CelebAMask-HQ-mask-color/0.png"
+
+    # 读取图像数据
+    img1 = plt.imread(image)
+    img2 = plt.imread(mask)
+    img3 = plt.imread(mask_color)
+
+    # 创建具有 1 行和 3 列的子图
+    fig, axs = plt.subplots(1, 3, figsize=(8, 3))
+
+    # 在每个子图中显示相应的图像
+    axs[0].imshow(img1)
+    axs[1].imshow(img2, cmap='gray')
+    axs[2].imshow(img3)
+
+    # 设置子图标题
+    axs[0].set_title('Image')
+    axs[1].set_title('Mask')
+    axs[2].set_title('Mask Color')
+
+    # 取消坐标轴
+    axs[0].set_axis_off()
+    axs[1].set_axis_off()
+    axs[2].set_axis_off()
+
+    # 显示图像
     plt.show()
