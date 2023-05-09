@@ -7,10 +7,8 @@
 @File : show.py
 """
 
-import numpy as np
-import torch
 import matplotlib.pyplot as plt
-import cv2
+
 
 if __name__ == '__main__':
     image = "./data/CelebAMask-HQ/CelebA-HQ-img/0.jpg"
@@ -42,3 +40,6 @@ if __name__ == '__main__':
 
     # 显示图像
     plt.show()
+
+    # 保存图像为矢量图
+    plt.savefig('./output/show0.svg', format='svg')
