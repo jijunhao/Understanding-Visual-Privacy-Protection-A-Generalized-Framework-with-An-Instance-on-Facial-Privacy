@@ -19,3 +19,10 @@ if not os.path.exists('./data/CelebAMask-HQ/CelebA-HQ-to-CelebA-mapping-identity
 
 print(table.head())
 
+
+# 计算类别数量
+num_categories = len(table['id'].unique())
+
+# 输出结果
+print(f'The dataset contains {num_categories} categories.')
+

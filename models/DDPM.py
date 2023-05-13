@@ -1060,7 +1060,12 @@ class Trainer(object):
         m1, s1 = self.calculate_activation_statistics(real_samples)
         m2, s2 = self.calculate_activation_statistics(fake_samples)
 
-        fid_value = calculate_frechet_distance(m1, s1, m2, s2)
+        fid_value = calculate_frechet_distance(m1, s1, m2, s2)？
+
+
+
+
+
         return fid_value
 
     def train(self):
@@ -1135,20 +1140,20 @@ if __name__ == '__main__':
         model,
         image_size = 128,
         timesteps=1000,  # number of steps
-        sampling_timesteps=300,
+        sampling_timesteps=1000,
         loss_type='l1'  # L1 or L2
     )
 
 
     trainer = Trainer(
         diffusion,
-        '/media/node/SSD/jijunhao/data/awards',
+        '../data/CelebAMask-HQ/CelebA-HQ-img',
         train_batch_size = 16,
         train_lr = 8e-5,
         train_num_steps = 80000,         # total training steps
         gradient_accumulate_every = 2,    # gradient accumulation steps
         ema_decay = 0.995,                # exponential moving average decay
-        save_and_sample_every=1000,
+        save_and_sample_every=2000,
         results_folder='../results',
         amp = False,                       # turn on mixed precision
         calculate_fid = True,              # whether to calculate fid during training
@@ -1162,7 +1167,7 @@ if __name__ == '__main__':
         trainer.load(model_files[-1].split('-')[1].split('.')[0])
 
 
-    #trainer.train()
+    trainer.train()
 
     import matplotlib.animation as animation
     import matplotlib.pyplot as plt
@@ -1179,7 +1184,7 @@ if __name__ == '__main__':
         ims.append([im])
 
     animate = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=1000)
-    animate.save('diffusion.gif')
+    animate.save('../output/diffusion.gif')
     plt.show()
     
 

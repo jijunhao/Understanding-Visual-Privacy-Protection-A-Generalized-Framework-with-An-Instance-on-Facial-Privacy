@@ -92,8 +92,8 @@ if __name__ == "__main__":
     train_loader = load_data(
         batch_size=1,
         image_size=256,
-        image_path="/media/node/SSD/jijunhao/CelebAMask-HQ/CelebA-HQ-img/",
-        mask_path="/media/node/SSD/jijunhao/CelebAMask-HQ/CelebAMask-HQ-mask/",
+        image_path="./data/CelebAMask-HQ/CelebA-HQ-img/",
+        mask_path="./data/CelebAMask-HQ/CelebAMask-HQ-mask/",
         image_transformer=transforms.Compose(
             [
                 transforms.Resize((256, 256)),
