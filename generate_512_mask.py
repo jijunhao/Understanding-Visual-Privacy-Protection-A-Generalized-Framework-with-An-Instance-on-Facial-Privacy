@@ -32,6 +32,7 @@ def parse_args():
         default="test_data/512_masks/27007.png",
         help="path to the segmentation mask"
     )
+
     parser.add_argument(
         "--input_text",
         type=str,
@@ -72,6 +73,7 @@ def parse_args():
         default=4,
         help="number of images to generate"
     )
+
     parser.add_argument(
         "--ddim_steps",
         type=int,
