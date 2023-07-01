@@ -1061,7 +1061,7 @@ class LatentDiffusion(DDPM):
         loss_dict.update({f'{prefix}/loss_vlb': loss_vlb})
         loss += (self.original_elbo_weight * loss_vlb)
 
-
+        """
         # add face id loss
         recon=self.predict_start_from_noise(x_start, t=t, noise=model_output)
         TestFace = indentity.TestFace()
@@ -1074,7 +1074,7 @@ class LatentDiffusion(DDPM):
         loss_dict.update({f'{prefix}/loss_id': loss_id})
 
         loss += (2 * loss_id)
-
+        """
 
         loss_dict.update({f'{prefix}/loss': loss})
 
