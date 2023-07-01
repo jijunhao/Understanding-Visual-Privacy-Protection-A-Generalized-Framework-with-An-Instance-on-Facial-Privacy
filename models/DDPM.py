@@ -330,7 +330,7 @@ class Attention(nn.Module):
 
 
 
-# model
+# models
 
 class Unet(nn.Module):
     """
@@ -873,7 +873,7 @@ class GaussianDiffusion(nn.Module):
 
 
 
-# dataset classes
+# datasets classes
 
 class Dataset(Dataset):
     def __init__(
@@ -944,7 +944,7 @@ class Trainer(object):
 
         self.accelerator.native_amp = amp
 
-        # model
+        # models
 
         self.model = diffusion_model
         self.channels = diffusion_model.channels
@@ -971,7 +971,7 @@ class Trainer(object):
         self.train_num_steps = train_num_steps
         self.image_size = diffusion_model.image_size
 
-        # dataset and dataloader
+        # datasets and dataloader
 
         self.ds = Dataset(folder, self.image_size, augment_horizontal_flip = augment_horizontal_flip, convert_image_to = convert_image_to)
         dl = DataLoader(self.ds, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
@@ -996,7 +996,7 @@ class Trainer(object):
 
         self.step = 0
 
-        # prepare model, dataloader, optimizer with accelerator
+        # prepare models, dataloader, optimizer with accelerator
 
         self.model, self.opt = self.accelerator.prepare(self.model, self.opt)
 
@@ -1010,22 +1010,22 @@ class Trainer(object):
 
         data = {
             'step': self.step,
-            'model': self.accelerator.get_state_dict(self.model),
+            'models': self.accelerator.get_state_dict(self.model),
             'opt': self.opt.state_dict(),
             'ema': self.ema.state_dict(),
             'scaler': self.accelerator.scaler.state_dict() if exists(self.accelerator.scaler) else None,
         }
 
-        torch.save(data, str(self.results_folder / f'model-{milestone}.pt'))
+        torch.save(data, str(self.results_folder / f'models-{milestone}.pt'))
 
     def load(self, milestone):
         accelerator = self.accelerator
         device = accelerator.device
 
-        data = torch.load(str(self.results_folder / f'model-{milestone}.pt'), map_location=device)
+        data = torch.load(str(self.results_folder / f'models-{milestone}.pt'), map_location=device)
 
         model = self.accelerator.unwrap_model(self.model)
-        model.load_state_dict(data['model'])
+        model.load_state_dict(data['models'])
 
         self.step = data['step']
         self.opt.load_state_dict(data['opt'])
@@ -1060,11 +1060,7 @@ class Trainer(object):
         m1, s1 = self.calculate_activation_statistics(real_samples)
         m2, s2 = self.calculate_activation_statistics(fake_samples)
 
-        fid_value = calculate_frechet_distance(m1, s1, m2, s2)？
-
-
-
-
+        fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
         return fid_value
 
@@ -1184,7 +1180,7 @@ if __name__ == '__main__':
         ims.append([im])
 
     animate = animation.ArtistAnimation(fig, ims, interval=50, blit=True, repeat_delay=1000)
-    animate.save('../output/diffusion.gif')
+    animate.save('../outputs/diffusion.gif')
     plt.show()
     
 

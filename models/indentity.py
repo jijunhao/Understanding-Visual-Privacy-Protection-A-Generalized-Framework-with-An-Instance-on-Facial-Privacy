@@ -8,7 +8,11 @@
 """
 import torch
 import torch.nn.functional as F
-from backbone import facenet,irse,ir152
+from .backbone import facenet,irse,ir152
+# 使用生成id用下面的
+# from backbone import facenet,irse,ir152
+
+from tqdm import trange
 
 import cv2
 import numpy as np
@@ -22,8 +26,8 @@ class TestFace():
 
     def facemodels(self):
         self.targe_models = {}
-        selected=['ir152','irse50','facenet','mobile_face']
-        #selected=['facenet']
+        #selected=['ir152','irse50','facenet','mobile_face']
+        selected=['ir152']
         for model in selected:
             if model == 'ir152':
                 self.targe_models[model] = []
@@ -96,30 +100,38 @@ class TestFace():
         target_resize = F.interpolate(target, size=input_size, mode='bilinear')
         emb_source = fr_model(source_resize)
         emb_target = fr_model(target_resize).detach()
+        #cos_loss = self.cos_simi(emb_source, emb_target)
         cos_loss = torch.cosine_similarity(emb_source, emb_target)
-        return cos_loss
+        return torch.mean(cos_loss)
 
-"""
+    def pred_id(self, source, model_name,target_models):
+        input_size = target_models[model_name][0]
+        fr_model = target_models[model_name][1]
+        source_resize = F.interpolate(source, size=input_size, mode='bilinear')
+        emb_source = fr_model(source_resize)
+        return emb_source
+
 if __name__ == '__main__':
-    TestFace= TestFace()
-    # 读取第一张图片
-    data1 = cv2.imread("./data/CelebAMask-HQ/CelebA-HQ-img/0.jpg")
-    data1 = np.array(data1, dtype=np.float32) / 255.0
-    data1 = np.transpose(data1, (2, 0, 1))
-    data1 = torch.from_numpy(data1).unsqueeze(0).to('cuda')
-    # 读取第二张图片
-    data2 = cv2.imread("./data/CelebAMask-HQ/CelebA-HQ-img/1.jpg")
-    data2 = np.array(data2, dtype=np.float32) / 255.0
-    data2 = np.transpose(data2, (2, 0, 1))
-    data2 = torch.from_numpy(data2).unsqueeze(0).to('cuda')
+    TestFace = TestFace()
 
-
-    loss = TestFace.test_verification(data1, data2)
-    print(loss)
-
-    loss = TestFace.test_verification(data1, data1)
-    print(loss)
-"""
+    for i in trange(0,30000):
+        data = cv2.imread("./datasets/image/image_512_downsampled_from_hq_1024/"+str(i)+".jpg")
+        data = np.array(data, dtype=np.float32) / 255.0
+        data = np.transpose(data, (2, 0, 1))
+        data = torch.from_numpy(data).unsqueeze(0).to('cuda')
+        # 保存向量id
+        id = TestFace.pred_id(data,'ir152',TestFace.targe_models)
+        with torch.no_grad():
+            torch.save(id.to("cpu"), 'datasets/id/' + str(i) + '.pt')
+    # data = cv2.imread("./datasets/image/image_512_downsampled_from_hq_1024/"+str(0)+".jpg")
+    # data = np.array(data, dtype=np.float32) / 255.0
+    # data = np.transpose(data, (2, 0, 1))
+    # data = torch.from_numpy(data).unsqueeze(0).to('cuda')
+    # data1 = cv2.imread("./datasets/image/image_512_downsampled_from_hq_1024/"+str(3)+".jpg")
+    # data1 = np.array(data1, dtype=np.float32) / 255.0
+    # data1 = np.transpose(data1, (2, 0, 1))
+    # data1 = torch.from_numpy(data1).unsqueeze(0).to('cuda')
+    # print(TestFace.test_verification(data,data1))
 
 
 

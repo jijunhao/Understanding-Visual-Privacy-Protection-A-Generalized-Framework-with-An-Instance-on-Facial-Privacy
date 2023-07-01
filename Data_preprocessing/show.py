@@ -42,4 +42,4 @@ if __name__ == '__main__':
     plt.show()
 
     # 保存图像为矢量图
-    plt.savefig('./output/show0.svg', format='svg')
+    plt.savefig('./outputs/show0.svg', format='svg')
