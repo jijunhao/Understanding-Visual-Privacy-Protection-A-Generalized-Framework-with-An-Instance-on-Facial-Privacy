@@ -103,6 +103,7 @@ class DDPM(pl.LightningModule):
             self.monitor = monitor
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys=ignore_keys, only_model=load_only_unet)
+            print("init_form_ckpt done:", ckpt_path)
 
         self.register_schedule(given_betas=given_betas, beta_schedule=beta_schedule, timesteps=timesteps,
                                linear_start=linear_start, linear_end=linear_end, cosine_s=cosine_s)
@@ -482,6 +483,7 @@ class LatentDiffusion(DDPM):
         self.restarted_from_ckpt = False
         if ckpt_path is not None:
             self.init_from_ckpt(ckpt_path, ignore_keys)
+            print("init_form_ckpt done:", ckpt_path)
             self.restarted_from_ckpt = True
 
     def make_cond_schedule(self, ):
@@ -684,7 +686,7 @@ class LatentDiffusion(DDPM):
                     xc = batch[cond_key]
                 elif cond_key == 'class_label':
                     xc = batch
-                elif cond_key == 'seg_mask_and_text' or 'conditions':     # 增加了mask和text的条件
+                elif cond_key == 'seg_mask_and_text' or 'conditions' or 'id':     # 增加了mask和text的条件
                     xc = batch[cond_key]
                 else:
                     xc = super().get_input(batch, cond_key).to(self.device)
@@ -1058,6 +1060,22 @@ class LatentDiffusion(DDPM):
         loss_vlb = (self.lvlb_weights[t] * loss_vlb).mean()
         loss_dict.update({f'{prefix}/loss_vlb': loss_vlb})
         loss += (self.original_elbo_weight * loss_vlb)
+
+        """
+        # add face id loss
+        recon=self.predict_start_from_noise(x_start, t=t, noise=model_output)
+        TestFace = indentity.TestFace()
+        id_part = cond.squeeze(1)
+        # text_id
+        # id_part = cond[:, :1, :].squeeze(1)
+        pred_id =TestFace.pred_id(self.decode_first_stage(recon),'ir152',TestFace.targe_models)
+        loss_id = 1 - torch.cosine_similarity(id_part, pred_id)
+        loss_id =loss_id.max().item()  # 取batch里面最大的损失，加速训练
+        loss_dict.update({f'{prefix}/loss_id': loss_id})
+
+        loss += (2 * loss_id)
+        """
+
         loss_dict.update({f'{prefix}/loss': loss})
 
         return loss, loss_dict

@@ -447,14 +447,14 @@ class LatentDiffusionCompose(DDPMCompose):
                 scale_factor=1.0,
                 scale_by_std=False,
 
-                conditions = ['seg_mask', 'text'],
+                conditions = ['seg_mask', 'text','id'],
 
                 text_ldm_config_path=None,
                 text_ldm_ckpt_path=None,
                 seg_mask_ldm_config_path=None,
                 seg_mask_ldm_ckpt_path=None,
-                sketch_ldm_config_path=None,
-                sketch_ldm_ckpt_path=None,
+                id_ldm_config_path=None,
+                id_ldm_ckpt_path=None,
 
                 compose_unet_config = None,
                 compose_cond_stage_config = None,
@@ -485,9 +485,9 @@ class LatentDiffusionCompose(DDPMCompose):
             print(f'\nLatentDiffusionCompose: instantiate text branch from {text_ldm_ckpt_path}')
             self.text_ldm, self.text_ldm_config = self.instantiate_ldm(text_ldm_config_path, text_ldm_ckpt_path)
 
-        if 'sketch' in self.conditions:
-            print(f'\nLatentDiffusionCompose: instantiate sketch branch from {sketch_ldm_ckpt_path}')
-            self.sketch_ldm, self.sketch_ldm_config = self.instantiate_ldm(sketch_ldm_config_path, sketch_ldm_ckpt_path)
+        if 'id' in self.conditions:
+            print(f'\nLatentDiffusionCompose: instantiate id branch from {id_ldm_ckpt_path}')
+            self.id_ldm, self.id_ldm_config = self.instantiate_ldm(id_ldm_config_path, id_ldm_ckpt_path)
 
 
 
@@ -506,9 +506,9 @@ class LatentDiffusionCompose(DDPMCompose):
             self.model.text_unet = self.text_ldm.model  # DiffusionWrapper
             for param in self.model.text_unet.parameters():
                 param.requires_grad = False
-        if 'sketch' in self.conditions:
-            self.model.sketch_unet = self.sketch_ldm.model # DiffusionWrapper
-            for param in self.model.sketch_unet.parameters():
+        if 'id' in self.conditions:
+            self.model.id_unet = self.id_ldm.model # DiffusionWrapper
+            for param in self.model.id_unet.parameters():
                 param.requires_grad = False
 
         print('finish instantiate_from_config compose_unet_config')
@@ -545,10 +545,10 @@ class LatentDiffusionCompose(DDPMCompose):
             for param in self.seg_mask_ldm.cond_stage_model.parameters():
                 param.requires_grad = False
             self.cond_stage_model.seg_mask_cond_stage_model = self.seg_mask_ldm.cond_stage_model
-        if 'sketch' in self.conditions:
-            for param in self.sketch_ldm.cond_stage_model.parameters():
+        if 'id' in self.conditions:
+            for param in self.id_ldm.cond_stage_model.parameters():
                 param.requires_grad = False
-            self.cond_stage_model.sketch_cond_stage_model = self.sketch_ldm.cond_stage_model
+            self.cond_stage_model.id_cond_stage_model = self.id_ldm.cond_stage_model
 
         for param in self.cond_stage_model.parameters():
             param.requires_grad = False
@@ -575,15 +575,15 @@ class LatentDiffusionCompose(DDPMCompose):
             del self.text_ldm
         if 'seg_mask' in self.conditions:
             del self.seg_mask_ldm
-        if 'sketch' in self.conditions:
-            del self.sketch_ldm
+        if 'id' in self.conditions:
+            del self.id_ldm
 
         for name, param in self.named_parameters():
             string = f'{name}, requires_grad={param.requires_grad}'
             if print_each_param and param.requires_grad:
                 print(string)
 
-            if ('text_confidence_predictor' in name) or ('seg_mask_confidence_predictor' in name) or ('sketch_confidence_predictor' in name):
+            if ('text_confidence_predictor' in name) or ('seg_mask_confidence_predictor' in name) or ('id_confidence_predictor' in name):
                 assert param.requires_grad == True, string
             else:
                 assert param.requires_grad == False, string
@@ -680,7 +680,7 @@ class LatentDiffusionCompose(DDPMCompose):
         This function is used when want to apply original dynamic diffusers to new pre-trained models
         """
         ignore_list = [
-            'text_unet', 'seg_mask_unet', 'sketch_unet',
+            'text_unet', 'seg_mask_unet', 'id_unet',
             'cond_stage_model',
             'first_stage_model'
         ]
@@ -1234,7 +1234,7 @@ class LatentDiffusionCompose(DDPMCompose):
         loss_simple = self.get_loss(model_output, target, mean=False).mean([1, 2, 3])
         loss_dict.update({f'{prefix}/loss_simple': loss_simple.mean()})
 
-        logvar_t = self.logvar[t].to(self.device)
+        logvar_t = self.logvar[t.cpu()].to(self.device)  # # add .cpu() to avoid error by jijunhao
         loss = loss_simple / torch.exp(logvar_t) + logvar_t
         # loss = loss_simple / torch.exp(self.logvar) + self.logvar
         if self.learn_logvar:

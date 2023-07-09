@@ -156,14 +156,14 @@ def main():
     parser.add_argument(
         "--config",
         type=str,
-        default="configs/512_mask.yaml",
+        default="configs/512_id.yaml",
         help="path to config which constructs model",
     )
     
     parser.add_argument(
         "--ckpt",
         type=str,
-        default="/home/jijunhao/diffusion/pretrained/512_mask.ckpt",
+        default="/home/jijunhao/diffusion/outputs/512_id/2023-07-01T21-06-39_512_id/pretrained/last.ckpt",
         help="path to checkpoint of model",
     )
     
@@ -239,8 +239,8 @@ def main():
         tic = time.time()
         all_samples = list()
         TestFace = indentity.TestFace()
-        # condition = TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
-        condition = flattened_img_tensor_one_hot_transpose
+        condition = TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
+        #condition = flattened_img_tensor_one_hot_transpose
         """
          condition = {
             'seg_mask': flattened_img_tensor_one_hot_transpose

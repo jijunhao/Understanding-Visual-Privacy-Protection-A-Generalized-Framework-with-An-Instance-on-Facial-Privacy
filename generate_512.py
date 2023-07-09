@@ -14,8 +14,9 @@ from PIL import Image
 from omegaconf import OmegaConf
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim_confidence import DDIMConfidenceSampler
-
-
+from einops import rearrange, repeat
+from ldm.models.diffusion.ddim import DDIMSampler
+from PIL import Image
 """
 Inference script for multi-modal-driven face generation at 512x512 resolution
 """
@@ -24,6 +25,14 @@ Inference script for multi-modal-driven face generation at 512x512 resolution
 def parse_args():
 
     parser = argparse.ArgumentParser(description="")
+
+
+    parser.add_argument(
+        "--init-img",
+        type=str,
+        nargs="?",
+        help="path to the input image"
+    )
 
     # multi-modal conditions
     parser.add_argument(
@@ -79,6 +88,13 @@ def parse_args():
         help="number of ddim steps (between 20 to 1000, the larger the slower but better quality)"
     )
 
+    parser.add_argument(
+        "--ddim_eta",
+        type=float,
+        default=0.0,
+        help="ddim eta (eta=0.0 corresponds to deterministic sampling",
+    )
+
     # whether save intermediate outputs
     parser.add_argument(
         "--save_z",
@@ -111,9 +127,26 @@ def parse_args():
         help="whether overlay the segmentation mask on the synthesized image to visualize mask consistency",
     )
 
+    parser.add_argument(
+        "--strength",
+        type=float,
+        default=0.75,
+        help="strength for noising/unnoising. 1.0 corresponds to full destruction of information in init image",
+    )
+
     args = parser.parse_args()
     return args
 
+def load_img(path):
+    image = Image.open(path).convert("RGB")
+    w, h = image.size
+    print(f"loaded input image of size ({w}, {h}) from {path}")
+    w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
+    image = image.resize((w, h), resample=Image.LANCZOS)
+    image = np.array(image).astype(np.float32) / 255.0
+    image = image[None].transpose(0, 3, 1, 2)
+    image = torch.from_numpy(image)
+    return image
 
 def main():
 
@@ -162,6 +195,14 @@ def main():
     mask_ = Image.fromarray(input_mask)
     mask_.save(save_path_mask)
 
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    init_image = load_img(args.init_img).to(device)
+    init_image = repeat(init_image, '1 ... -> b ...', b=args.batch_size)
+    init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space
+
+    sampler = DDIMSampler(model)
+    sampler.make_schedule(ddim_num_steps=args.ddim_steps, ddim_eta=args.ddim_eta, verbose=False)
+    t_enc = int(args.strength * args.ddim_steps)
     # ========== inference ==========
     with torch.no_grad():
 
@@ -179,13 +220,13 @@ def main():
                     condition[key] = condition[key].repeat(args.batch_size, 1, 1)
             else:
                 condition = condition.repeat(args.batch_size, 1, 1)
-
+            """
             # define DDIM sampler with dynamic diffusers
             ddim_sampler = DDIMConfidenceSampler(
                 model=model,
                 return_confidence_map=args.return_influence_function)
 
-            # DDIM sampling
+                # DDIM sampling
             z_0_batch, intermediates = ddim_sampler.sample(
                 S=args.ddim_steps,
                 batch_size=args.batch_size,
@@ -194,6 +235,14 @@ def main():
                 verbose=False,
                 eta=1.0,
                 log_every_t=1)
+
+        # decode VAE latent z_0 to image x_0
+        x_0_batch = model.decode_first_stage(z_0_batch) # [B, 3, 256, 256]
+    
+            """
+            # DDIM sampling
+            z_t_batch = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*args.batch_size).to(device))
+            z_0_batch = sampler.decode(z_t_batch, condition, t_enc)
 
         # decode VAE latent z_0 to image x_0
         x_0_batch = model.decode_first_stage(z_0_batch) # [B, 3, 256, 256]
