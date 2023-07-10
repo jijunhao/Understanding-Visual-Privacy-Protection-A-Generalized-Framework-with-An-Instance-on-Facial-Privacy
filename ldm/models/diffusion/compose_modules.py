@@ -145,7 +145,7 @@ class ComposeUNet(nn.Module):
                     text_confidence_map = 1 - seg_mask_confidence_map
                 else:
                     seg_mask_confidence_map = seg_mask_confidence_map * seg_mask_schedule_scale
-                    id_confidence_map = id_confidence_map * seg_mask_schedule_scale
+                    id_confidence_map = id_confidence_map  # delete * seg_mask_schedule_scale
                     text_confidence_map = 1 - seg_mask_confidence_map - id_confidence_map
 
             if self.seg_mask_scale_factor is not None:
@@ -156,7 +156,7 @@ class ComposeUNet(nn.Module):
                     text_confidence_map = text_confidence_map / sum_map
                 else:
                     seg_mask_confidence_map = seg_mask_confidence_map * self.seg_mask_scale_factor
-                    id_confidence_map = id_confidence_map * self.seg_mask_scale_factor
+                    id_confidence_map = id_confidence_map # delete * self.seg_mask_scale_factor
                     sum_map = text_confidence_map + seg_mask_confidence_map + id_confidence_map
                     seg_mask_confidence_map = seg_mask_confidence_map / sum_map
                     text_confidence_map = text_confidence_map / sum_map

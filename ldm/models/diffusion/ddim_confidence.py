@@ -148,7 +148,7 @@ class DDIMConfidenceSampler(object):
             timesteps = self.ddim_timesteps[:subset_end]
 
         if self.return_confidence_map:
-            intermediates = {'x_inter': [], 'pred_x0': [], 'seg_mask_confidence_map': [], 'text_confidence_map': [],'seg_mask_unet_output': [],  'text_unet_output': [], }
+            intermediates = {'x_inter': [], 'pred_x0': [], 'seg_mask_confidence_map': [], 'text_confidence_map': [], 'seg_mask_unet_output': [],  'text_unet_output': [], }
             if 'id' in self.conditions:
                 intermediates['id_confidence_map']  = []
                 intermediates['id_unet_output']  = []
