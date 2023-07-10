@@ -6,4 +6,6 @@ python Data_preprocessing/g_mask.py
 
 python Data_preprocessing/g_color.py
 
+python Data_preprocessing/g_color_palette.py
+
 python Data_preprocessing/show.py
