@@ -17,6 +17,8 @@ from ldm.models.diffusion.ddim_confidence import DDIMConfidenceSampler
 from einops import rearrange, repeat
 from ldm.models.diffusion.ddim import DDIMSampler
 from PIL import Image
+
+from models import indentity
 """
 Inference script for multi-modal-driven face generation at 512x512 resolution
 """
@@ -52,19 +54,19 @@ def parse_args():
     parser.add_argument(
         "--config_path",
         type=str,
-        default="configs/512_codiff_mask_text.yaml",
+        default="configs/512_codiff_id_mask_text.yaml",
         help="path to models config"
     )
     parser.add_argument(
         "--ckpt_path",
         type=str,
-        default="pretrained/512_codiff_mask_text.ckpt",
+        default="/home/jijunhao/diffusion/outputs/512_codiff_id_mask_text/2023-07-10T16-05-03_512_codiff_id_mask_text/pretrained/last.ckpt",
         help="path to models checkpoint"
     )
     parser.add_argument(
         "--save_folder",
         type=str,
-        default="outputs/inference_512_codiff_mask_text",
+        default="outputs/inference_512_codiff_id_mask_text",
         help="folder to save synthesis outputs"
     )
     parser.add_argument(
@@ -139,13 +141,10 @@ def parse_args():
 
 def load_img(path):
     image = Image.open(path).convert("RGB")
-    w, h = image.size
-    print(f"loaded input image of size ({w}, {h}) from {path}")
-    w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
-    image = image.resize((w, h), resample=Image.LANCZOS)
-    image = np.array(image).astype(np.float32) / 255.0
-    image = image[None].transpose(0, 3, 1, 2)
+    image = np.array(image).astype(np.uint8)
+    image = image.astype(np.float32)/127.5 - 1.0
     image = torch.from_numpy(image)
+    image = image.permute(2, 0, 1).unsqueeze(0)
     return image
 
 def main():
@@ -183,7 +182,7 @@ def main():
     input_mask = mask
 
     print(f'================================================================================')
-    print(f'mask_path: {args.mask_path} | text: {args.input_text}')
+    print(f'init_img: {args.init_img} | mask_path: {args.mask_path} | text: {args.input_text}')
 
     # prepare directories
     mask_name = args.mask_path.split('/')[-1]
@@ -195,6 +194,7 @@ def main():
     mask_ = Image.fromarray(input_mask)
     mask_.save(save_path_mask)
 
+    # ========== prepare init image ==========
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     init_image = load_img(args.init_img).to(device)
     init_image = repeat(init_image, '1 ... -> b ...', b=args.batch_size)
@@ -205,10 +205,11 @@ def main():
     t_enc = int(args.strength * args.ddim_steps)
     # ========== inference ==========
     with torch.no_grad():
-
+        TestFace = indentity.TestFace()
         condition = {
             'seg_mask': flattened_img_tensor_one_hot_transpose,
-            'text': [args.input_text.lower()]
+            'text': [args.input_text.lower()],
+            'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
         }
 
         with model.ema_scope("Plotting"):
@@ -220,11 +221,15 @@ def main():
                     condition[key] = condition[key].repeat(args.batch_size, 1, 1)
             else:
                 condition = condition.repeat(args.batch_size, 1, 1)
-            """
+
             # define DDIM sampler with dynamic diffusers
             ddim_sampler = DDIMConfidenceSampler(
                 model=model,
                 return_confidence_map=args.return_influence_function)
+
+            t_enc = int(0.99 * args.ddim_steps)
+
+            x_t = model.q_sample(init_latent,torch.tensor([t_enc]*args.batch_size).to(device))
 
                 # DDIM sampling
             z_0_batch, intermediates = ddim_sampler.sample(
@@ -235,14 +240,6 @@ def main():
                 verbose=False,
                 eta=1.0,
                 log_every_t=1)
-
-        # decode VAE latent z_0 to image x_0
-        x_0_batch = model.decode_first_stage(z_0_batch) # [B, 3, 256, 256]
-    
-            """
-            # DDIM sampling
-            z_t_batch = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*args.batch_size).to(device))
-            z_0_batch = sampler.decode(z_t_batch, condition, t_enc)
 
         # decode VAE latent z_0 to image x_0
         x_0_batch = model.decode_first_stage(z_0_batch) # [B, 3, 256, 256]

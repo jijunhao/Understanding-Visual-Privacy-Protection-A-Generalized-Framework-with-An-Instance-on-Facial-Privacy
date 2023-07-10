@@ -5,11 +5,12 @@ import numpy as np
 from tqdm import tqdm
 from functools import partial
 
-from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like
+from ldm.modules.diffusionmodules.util import make_ddim_sampling_parameters, make_ddim_timesteps, noise_like, \
+    extract_into_tensor
 
 
 class DDIMConfidenceSampler(object):
-    def __init__(self, model, return_confidence_map=False, seg_mask_scale_factor=2.0, seg_mask_schedule = 'cosine_decay',softmax_twice=False, boost_factor=1.0, manual_prob=1.0, return_each_branch=False, schedule="linear", conditions= ['seg_mask', 'text'], **kwargs):
+    def __init__(self, model, return_confidence_map=False, seg_mask_scale_factor=2.0, seg_mask_schedule = 'cosine_decay',softmax_twice=False, boost_factor=1.0, manual_prob=1.0, return_each_branch=False, schedule="linear", conditions= ['seg_mask', 'text', 'id'], **kwargs):
         super().__init__()
         self.model = model
         self.ddpm_num_timesteps = model.num_timesteps
@@ -148,9 +149,9 @@ class DDIMConfidenceSampler(object):
 
         if self.return_confidence_map:
             intermediates = {'x_inter': [], 'pred_x0': [], 'seg_mask_confidence_map': [], 'text_confidence_map': [],'seg_mask_unet_output': [],  'text_unet_output': [], }
-            if 'sketch' in self.conditions:
-                intermediates['sketch_confidence_map']  = []
-                intermediates['sketch_unet_output']  = []
+            if 'id' in self.conditions:
+                intermediates['id_confidence_map']  = []
+                intermediates['id_unet_output']  = []
         else:
             intermediates = {'x_inter': [], 'pred_x0': []}
         time_range = reversed(range(0,timesteps)) if ddim_use_original_steps else np.flip(timesteps)
@@ -176,13 +177,13 @@ class DDIMConfidenceSampler(object):
                                       unconditional_conditioning=unconditional_conditioning)
             if self.return_confidence_map:
                 if self.return_each_branch:
-                    if 'sketch' in self.conditions:
-                        img, pred_x0, seg_mask_confidence_map, text_confidence_map,sketch_confidence_map,  seg_mask_unet_output, text_unet_output, sketch_unet_output = outs
+                    if 'id' in self.conditions:
+                        img, pred_x0, seg_mask_confidence_map, text_confidence_map,id_confidence_map,  seg_mask_unet_output, text_unet_output, id_unet_output = outs
                     else:
                         img, pred_x0, seg_mask_confidence_map, text_confidence_map, seg_mask_unet_output, text_unet_output = outs
                 else:
-                    if 'sketch' in self.conditions:
-                        img, pred_x0, seg_mask_confidence_map, text_confidence_map, sketch_confidence_map = outs
+                    if 'id' in self.conditions:
+                        img, pred_x0, seg_mask_confidence_map, text_confidence_map, id_confidence_map = outs
                     else:
                         img, pred_x0, seg_mask_confidence_map, text_confidence_map = outs
             else:
@@ -197,14 +198,14 @@ class DDIMConfidenceSampler(object):
                 if self.return_confidence_map:
                     intermediates['seg_mask_confidence_map'].append(seg_mask_confidence_map)
                     intermediates['text_confidence_map'].append(text_confidence_map)
-                    if 'sketch' in self.conditions:
-                        intermediates['sketch_confidence_map'].append(sketch_confidence_map)
+                    if 'id' in self.conditions:
+                        intermediates['id_confidence_map'].append(id_confidence_map)
 
                 if self.return_each_branch:
                     intermediates['seg_mask_unet_output'].append(seg_mask_unet_output)
                     intermediates['text_unet_output'].append(text_unet_output)
-                    if 'sketch' in self.conditions:
-                        intermediates['sketch_unet_output'].append(sketch_unet_output)
+                    if 'id' in self.conditions:
+                        intermediates['id_unet_output'].append(id_unet_output)
 
         return img, intermediates
 
@@ -221,14 +222,14 @@ class DDIMConfidenceSampler(object):
                 e_t = outputs['outputs']
                 seg_mask_confidence_map=outputs['seg_mask_confidence_map']
                 text_confidence_map=outputs['text_confidence_map']
-                if 'sketch' in self.conditions:
-                    sketch_confidence_map=outputs['sketch_confidence_map']
+                if 'id' in self.conditions:
+                    id_confidence_map=outputs['id_confidence_map']
 
                 if self.return_each_branch:
                     seg_mask_unet_output=outputs['seg_mask_unet_output']
                     text_unet_output=outputs['text_unet_output']
-                    if 'sketch' in self.conditions:
-                        sketch_unet_output=outputs['sketch_unet_output']
+                    if 'id' in self.conditions:
+                        id_unet_output=outputs['id_unet_output']
 
 
             else:
@@ -267,15 +268,53 @@ class DDIMConfidenceSampler(object):
 
         if self.return_confidence_map:
             if self.return_each_branch:
-                if 'sketch' in self.conditions:
-                    return x_prev, pred_x0, seg_mask_confidence_map, text_confidence_map, sketch_confidence_map, seg_mask_unet_output, text_unet_output, sketch_unet_output
+                if 'id' in self.conditions:
+                    return x_prev, pred_x0, seg_mask_confidence_map, text_confidence_map, id_confidence_map, seg_mask_unet_output, text_unet_output, id_unet_output
                 else:
                     return x_prev, pred_x0, seg_mask_confidence_map, text_confidence_map, seg_mask_unet_output, text_unet_output
 
             else:
-                if 'sketch' in self.conditions:
-                    return x_prev, pred_x0, seg_mask_confidence_map, text_confidence_map, sketch_confidence_map
+                if 'id' in self.conditions:
+                    return x_prev, pred_x0, seg_mask_confidence_map, text_confidence_map, id_confidence_map
                 else:
                     return x_prev, pred_x0, seg_mask_confidence_map, text_confidence_map
         else:
             return x_prev, pred_x0
+
+
+    @torch.no_grad()
+    def stochastic_encode(self, x0, t, use_original_steps=False, noise=None):
+        # fast, but does not allow for exact reconstruction
+        # t serves as an index to gather the correct alphas
+        if use_original_steps:
+            sqrt_alphas_cumprod = self.sqrt_alphas_cumprod
+            sqrt_one_minus_alphas_cumprod = self.sqrt_one_minus_alphas_cumprod
+        else:
+            sqrt_alphas_cumprod = torch.sqrt(self.ddim_alphas)
+            sqrt_one_minus_alphas_cumprod = self.ddim_sqrt_one_minus_alphas
+
+        if noise is None:
+            noise = torch.randn_like(x0)
+        return (extract_into_tensor(sqrt_alphas_cumprod, t, x0.shape) * x0 +
+                extract_into_tensor(sqrt_one_minus_alphas_cumprod, t, x0.shape) * noise)
+
+    @torch.no_grad()
+    def decode(self, x_latent, cond, t_start, unconditional_guidance_scale=1.0, unconditional_conditioning=None,
+               use_original_steps=False):
+
+        timesteps = np.arange(self.ddpm_num_timesteps) if use_original_steps else self.ddim_timesteps
+        timesteps = timesteps[:t_start]
+
+        time_range = np.flip(timesteps)
+        total_steps = timesteps.shape[0]
+        print(f"Running DDIM Sampling with {total_steps} timesteps")
+
+        iterator = tqdm(time_range, desc='Decoding image', total=total_steps)
+        x_dec = x_latent
+        for i, step in enumerate(iterator):
+            index = total_steps - i - 1
+            ts = torch.full((x_latent.shape[0],), step, device=x_latent.device, dtype=torch.long)
+            x_dec, _ = self.p_sample_ddim(x_dec, cond, ts, index=index, use_original_steps=use_original_steps,
+                                          unconditional_guidance_scale=unconditional_guidance_scale,
+                                          unconditional_conditioning=unconditional_conditioning)
+        return x_dec

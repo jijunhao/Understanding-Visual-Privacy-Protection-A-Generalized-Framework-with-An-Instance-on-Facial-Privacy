@@ -1138,10 +1138,10 @@ class LatentDiffusion(DDPM):
         if return_codebook_ids:
             return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise, logits.argmax(dim=1)
         if return_x0:
-            print(f"10-12 p_sample(): return_x0={return_x0}")
+            #print(f"10-12 p_sample(): return_x0={return_x0}")
             return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise, x0
         else:
-            print(f"10-12 p_sample(): else")
+            #print(f"10-12 p_sample(): else")
             return model_mean + nonzero_mask * (0.5 * model_log_variance).exp() * noise
 
     @torch.no_grad()

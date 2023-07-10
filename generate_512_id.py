@@ -49,14 +49,11 @@ def load_model_from_config(config, ckpt, verbose=False):
 
 def load_img(path):
     image = Image.open(path).convert("RGB")
-    w, h = image.size
-    print(f"loaded input image of size ({w}, {h}) from {path}")
-    w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
-    image = image.resize((w, h), resample=PIL.Image.LANCZOS)
-    image = np.array(image).astype(np.float32) / 255.0
-    image = image[None].transpose(0, 3, 1, 2)
+    image = np.array(image).astype(np.uint8)
+    image = image.astype(np.float32)/127.5 - 1.0
     image = torch.from_numpy(image)
-    return 2.*image - 1.
+    image = image.permute(2, 0, 1).unsqueeze(0)
+    return image
 
 
 def main():
@@ -149,7 +146,7 @@ def main():
     parser.add_argument(
         "--strength",
         type=float,
-        default=0.75,
+        default=0.99, #default=0.75,
         help="strength for noising/unnoising. 1.0 corresponds to full destruction of information in init image",
     )
 
@@ -285,6 +282,15 @@ def main():
                 grid_count += 1
 
             toc = time.time()
+
+            save_x_0_path = os.path.join(outpath, f'x_0.png')
+            x_0 = init_image[0, :, :, :].unsqueeze(0)  # [1, 3, 256, 256]
+            x_0 = x_0.permute(0, 2, 3, 1).to('cpu').numpy()
+            x_0 = (x_0 + 1.0) * 127.5
+            np.clip(x_0, 0, 255, out=x_0)  # clip to range 0 to 255
+            x_0 = x_0.astype(np.uint8)
+            x_0 = Image.fromarray(x_0[0])
+            x_0.save(save_x_0_path)
 
     print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
           f" \nEnjoy.")
