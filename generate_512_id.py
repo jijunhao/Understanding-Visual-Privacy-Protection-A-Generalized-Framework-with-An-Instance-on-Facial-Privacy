@@ -196,7 +196,7 @@ def main():
     # ========== prepare seg mask for model ==========
     with open(opt.mask_path, 'rb') as f:
         img = Image.open(f)
-        resized_img = img.resize((32,32), Image.NEAREST) # resize
+        resized_img = img.resize((32,32), Image.Resampling.NEAREST) # resize
         flattened_img = list(resized_img.getdata())
     flattened_img_tensor = torch.tensor(flattened_img) # flatten
     flattened_img_tensor_one_hot = F.one_hot(flattened_img_tensor, num_classes=19) # one hot
@@ -260,25 +260,34 @@ def main():
             samples = sampler.decode(z_enc, condition, t_enc)
 
             x_samples = model.decode_first_stage(samples)
-            x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
+            #x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
 
             if not opt.skip_save:
                 for x_sample in x_samples:
-                    x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                    Image.fromarray(x_sample.astype(np.uint8)).save(
+                    x_sample = x_sample.unsqueeze(0).permute(0, 2, 3, 1).to('cpu').numpy()
+                    x_sample = (x_sample + 1.0) * 127.5
+                    np.clip(x_sample, 0, 255, out=x_sample)  # clip to range 0 to 255
+                    Image.fromarray(x_sample.astype(np.uint8)[0]).save(
                         os.path.join(sample_path, f"{base_count:05}.png"))
                     base_count += 1
             all_samples.append(x_samples)
 
             if not opt.skip_grid:
-            # additionally, save as grid
+                # additionally, save as grid, 样本的网格图
                 grid = torch.stack(all_samples, 0)
                 grid = rearrange(grid, 'n b c h w -> (n b) c h w')
                 grid = make_grid(grid, nrow=n_rows)
 
-                # to image
-                grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
-                Image.fromarray(grid.astype(np.uint8)).save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
+                # Move grid tensor to CPU and convert to numpy array
+                grid = grid.permute(1,2,0).to('cpu').numpy()
+
+                # Process grid image
+                grid = (grid + 1.0) * 127.5
+                np.clip(grid, 0, 255, out=grid)
+                grid = grid.astype(np.uint8)
+
+                # Save grid image
+                Image.fromarray(grid).save(os.path.join(outpath, f'grid-{grid_count:04}.png'))
                 grid_count += 1
 
             toc = time.time()
