@@ -73,7 +73,8 @@ class ComposeUNet(nn.Module):
             schedule_scale =   t / 1000
         elif self.seg_mask_schedule == 'cosine_decay':
             pi = torch.acos(torch.zeros(1)).item() * 2
-            schedule_scale =  (torch.cos( torch.tensor((1-(t/1000)) * (pi)))+1)/2
+            #schedule_scale =  (torch.cos( torch.tensor((1-(t/1000)) * (pi)))+1)/2
+            schedule_scale = (torch.cos(torch.tensor((1 - (t / 1000)) * (pi))).clone().detach() + 1) / 2
         else:
             raise NotImplementedError
         return schedule_scale
