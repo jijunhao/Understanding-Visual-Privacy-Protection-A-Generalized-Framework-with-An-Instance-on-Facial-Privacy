@@ -71,12 +71,6 @@ def parse_args():
         default="outputs/inference_512_codiff_id_mask_text",
         help="folder to save synthesis outputs"
     )
-    parser.add_argument(
-        "--mask_dir",
-        type=str,
-        default="test_data/512_masks",
-        help="folder that contains the segmentation masks"
-    )
 
     # batch size and ddim steps
     parser.add_argument(
@@ -90,13 +84,6 @@ def parse_args():
         type=int,
         default="50",
         help="number of ddim steps (between 20 to 1000, the larger the slower but better quality)"
-    )
-
-    parser.add_argument(
-        "--ddim_eta",
-        type=float,
-        default=0.0,
-        help="ddim eta (eta=0.0 corresponds to deterministic sampling",
     )
 
     # whether save intermediate outputs
@@ -123,6 +110,12 @@ def parse_args():
         type=bool,
         default=False,
         help="TBC",
+    )
+    parser.add_argument(
+        "--x_mask",
+        type=bool,
+        default=True,
+        help="whether replace the masked region with the input image",
     )
     parser.add_argument(
         "--save_mixed",
@@ -272,10 +265,11 @@ def main():
         x_1 = Image.fromarray(x_0[0])
         x_1.save(save_x_0_path)
 
-        x_mask = (1 - mask_bw) * init_image[0] + mask_bw * x_0[0]
-        x_mask = Image.fromarray(x_mask.astype(np.uint8))
-        save_x_0_mask_path = os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_x_0_mask.png')
-        x_mask.save(save_x_0_mask_path)
+        if args.x_mask:
+            x_mask = (1 - mask_bw) * init_image[0] + mask_bw * x_0[0]
+            x_mask = Image.fromarray(x_mask.astype(np.uint8))
+            save_x_0_mask_path = os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_x_0_mask.png')
+            x_mask.save(save_x_0_mask_path)
 
         # save intermediate x_t and pred_x_0
         if args.display_x_inter:
