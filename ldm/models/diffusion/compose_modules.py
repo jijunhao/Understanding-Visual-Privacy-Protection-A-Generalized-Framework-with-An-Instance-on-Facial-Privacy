@@ -128,6 +128,11 @@ class ComposeUNet(nn.Module):
             softmax_map = F.softmax(input=concat_map, dim=1) # [B, 2, 64, 64]
             seg_mask_confidence_map = softmax_map[:,0,:,:].unsqueeze(1)  # [B, 1, 64, 64]
             text_confidence_map = softmax_map[:,1,:,:].unsqueeze(1)   # [B, 1, 64, 64]
+        elif ('seg_mask' in self.conditions) and ('text' not in self.conditions) and ('id' in self.conditions):
+            concat_map = torch.cat([seg_mask_confidence_map, id_confidence_map], dim=1) # first mask, then text  # [B, 2, 64, 64]
+            softmax_map = F.softmax(input=concat_map, dim=1) # [B, 2, 64, 64]
+            seg_mask_confidence_map = softmax_map[:,0,:,:].unsqueeze(1)  # [B, 1, 64, 64]
+            id_confidence_map = softmax_map[:,1,:,:].unsqueeze(1)   # [B, 1, 64, 64]
         elif ('seg_mask' in self.conditions) and ('text' in self.conditions) and ('id' in self.conditions):
             concat_map = torch.cat([seg_mask_confidence_map, text_confidence_map, id_confidence_map], dim=1) # first mask, then text  # [B, 3, 64, 64]
             softmax_map = F.softmax(input=concat_map, dim=1) # [B, 3, 64, 64]
@@ -144,6 +149,9 @@ class ComposeUNet(nn.Module):
                 if 'id' not in self.conditions:
                     seg_mask_confidence_map = seg_mask_confidence_map * seg_mask_schedule_scale
                     text_confidence_map = 1 - seg_mask_confidence_map
+                elif 'text' not in self.conditions:
+                    seg_mask_confidence_map = seg_mask_confidence_map * seg_mask_schedule_scale
+                    id_confidence_map = 1 - seg_mask_confidence_map
                 else:
                     seg_mask_confidence_map = seg_mask_confidence_map * seg_mask_schedule_scale
                     id_confidence_map = id_confidence_map  # delete * seg_mask_schedule_scale
@@ -155,6 +163,11 @@ class ComposeUNet(nn.Module):
                     sum_map = text_confidence_map + seg_mask_confidence_map
                     seg_mask_confidence_map = seg_mask_confidence_map / sum_map
                     text_confidence_map = text_confidence_map / sum_map
+                elif 'text' not in self.conditions:
+                    seg_mask_confidence_map = seg_mask_confidence_map * self.seg_mask_scale_factor
+                    sum_map = id_confidence_map + seg_mask_confidence_map
+                    seg_mask_confidence_map = seg_mask_confidence_map / sum_map
+                    id_confidence_map = id_confidence_map / sum_map
                 else:
                     seg_mask_confidence_map = seg_mask_confidence_map * self.seg_mask_scale_factor
                     id_confidence_map = id_confidence_map # delete * self.seg_mask_scale_factor
@@ -185,6 +198,20 @@ class ComposeUNet(nn.Module):
                     return {'outputs': output, 'seg_mask_confidence_map': seg_mask_confidence_map, 'text_confidence_map': text_confidence_map}
             elif self.return_each_branch:
                     return {'outputs': output, 'text_unet_output': text_unet_output, 'seg_mask_unet_output': seg_mask_unet_output}
+            else:
+                return output
+        elif ('seg_mask' in self.conditions) and ('text' not in self.conditions) and ('id' in self.conditions):
+            seg_mask_weighted = seg_mask_unet_output * seg_mask_confidence_map  # [B, 3, 64, 64]
+            id_weighted = id_unet_output * id_confidence_map  # [B, 3, 64, 64]
+            output = seg_mask_weighted + id_weighted  # [B, 3, 64, 64]
+
+            if self.return_confidence_map:
+                if self.return_each_branch:
+                    return {'outputs': output, 'seg_mask_confidence_map': seg_mask_confidence_map, 'id_confidence_map': id_confidence_map, 'seg_mask_unet_output': seg_mask_unet_output, 'id_unet_output': id_unet_output}
+                else:
+                    return {'outputs': output, 'seg_mask_confidence_map': seg_mask_confidence_map, 'id_confidence_map': id_confidence_map}
+            elif self.return_each_branch:
+                    return {'outputs': output, 'seg_mask_unet_output': seg_mask_unet_output, 'id_unet_output': id_unet_output}
             else:
                 return output
         elif ('seg_mask' in self.conditions) and ('text' in self.conditions) and ('id' in self.conditions):
