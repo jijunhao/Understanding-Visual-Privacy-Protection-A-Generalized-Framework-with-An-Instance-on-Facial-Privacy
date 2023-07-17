@@ -451,6 +451,7 @@ class LatentDiffusion(DDPM):
                  conditioning_key=None,
                  scale_factor=1.0,
                  scale_by_std=False,
+                 loss_id = False,         # 是否计算loss_id
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
@@ -485,6 +486,9 @@ class LatentDiffusion(DDPM):
             self.init_from_ckpt(ckpt_path, ignore_keys)
             print("init_form_ckpt done:", ckpt_path)
             self.restarted_from_ckpt = True
+
+        self.loss_id = loss_id
+        self.id_weight = 1 # 计算loss_id
 
     def make_cond_schedule(self, ):
         self.cond_ids = torch.full(size=(self.num_timesteps,), fill_value=self.num_timesteps - 1, dtype=torch.long)
@@ -1061,20 +1065,19 @@ class LatentDiffusion(DDPM):
         loss_dict.update({f'{prefix}/loss_vlb': loss_vlb})
         loss += (self.original_elbo_weight * loss_vlb)
 
-        """
-        # add face id loss
-        recon=self.predict_start_from_noise(x_start, t=t, noise=model_output)
-        TestFace = indentity.TestFace()
-        id_part = cond.squeeze(1)
-        # text_id
-        # id_part = cond[:, :1, :].squeeze(1)
-        pred_id =TestFace.pred_id(self.decode_first_stage(recon),'ir152',TestFace.targe_models)
-        loss_id = 1 - torch.cosine_similarity(id_part, pred_id)
-        loss_id =loss_id.max().item()  # 取batch里面最大的损失，加速训练
-        loss_dict.update({f'{prefix}/loss_id': loss_id})
+        if self.loss_id:
+            # add face id loss
+            recon=self.predict_start_from_noise(x_start, t=t, noise=model_output)
+            TestFace = indentity.TestFace()
+            id_part = cond.squeeze(1)
+            # text_id
+            # id_part = cond[:, :1, :].squeeze(1)
+            pred_id =TestFace.pred_id(self.decode_first_stage(recon),'ir152',TestFace.targe_models)
+            loss_id = 1 - torch.cosine_similarity(id_part, pred_id)
+            loss_id =loss_id.max().item()  # 取batch里面最大的损失，加速训练
+            loss_dict.update({f'{prefix}/loss_id': loss_id})
 
-        loss += (2 * loss_id)
-        """
+            loss += (self.id_weight * loss_id)
 
         loss_dict.update({f'{prefix}/loss': loss})
 
