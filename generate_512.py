@@ -23,6 +23,8 @@ from models import indentity
 Inference script for multi-modal-driven face generation at 512x512 resolution
 """
 
+import warnings
+warnings.filterwarnings("ignore")
 
 def parse_args():
 
@@ -125,7 +127,7 @@ def parse_args():
     parser.add_argument(
         "--save_mixed",
         type=bool,
-        default=False,
+        default=True,
         help="whether overlay the segmentation mask on the synthesized image to visualize mask consistency",
     )
 
@@ -168,7 +170,7 @@ def main():
     # ========== prepare seg mask for models ==========
     with open(args.mask_path, 'rb') as f:
         img = Image.open(f)
-        resized_img = img.resize((32,32), Image.NEAREST) # resize
+        resized_img = img.resize((32,32), Image.Resampling.NEAREST) # resize
         flattened_img = list(resized_img.getdata())
     flattened_img_tensor = torch.tensor(flattened_img) # flatten
     flattened_img_tensor_one_hot = F.one_hot(flattened_img_tensor, num_classes=19) # one hot
@@ -194,15 +196,22 @@ def main():
     mask_ = Image.fromarray(input_mask)
     mask_.save(save_path_mask)
 
+    # mask_bw
+    mask_bw = np.array(Image.open("/home/jijunhao/diffusion/data/CelebAMask-HQ/CelebAMask-HQ-mask-bw/"+mask_name).convert("L"))
+    mask_bw = mask_bw.astype(np.float32)/255.0
+    mask_bw = mask_bw[None,None]
+    mask_bw[mask_bw < 0.5] = 0
+    mask_bw[mask_bw >= 0.5] = 1
+    mask_bw = torch.from_numpy(mask_bw)
+
+
     # ========== prepare init image ==========
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     init_image = load_img(args.init_img).to(device)
     init_image = repeat(init_image, '1 ... -> b ...', b=args.batch_size)
     init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space
 
-    sampler = DDIMSampler(model)
-    sampler.make_schedule(ddim_num_steps=args.ddim_steps, ddim_eta=args.ddim_eta, verbose=False)
-    t_enc = int(args.strength * args.ddim_steps)
+
     # ========== inference ==========
     with torch.no_grad():
         TestFace = indentity.TestFace()
@@ -227,10 +236,6 @@ def main():
                 model=model,
                 return_confidence_map=args.return_influence_function)
 
-            t_enc = int(0.99 * args.ddim_steps)
-
-            x_t = model.q_sample(init_latent,torch.tensor([t_enc]*args.batch_size).to(device))
-
                 # DDIM sampling
             z_0_batch, intermediates = ddim_sampler.sample(
                 S=args.ddim_steps,
@@ -239,11 +244,20 @@ def main():
                 conditioning=condition,
                 verbose=False,
                 eta=1.0,
-                log_every_t=1)
+                log_every_t=1,
+                x0=init_latent)
 
         # decode VAE latent z_0 to image x_0
         x_0_batch = model.decode_first_stage(z_0_batch) # [B, 3, 256, 256]
 
+    mask_bw = mask_bw.permute(0, 2, 3, 1).to("cpu").numpy()[0]
+    init_image = init_image.permute(0, 2, 3, 1).to('cpu').numpy()
+
+    sve_init_path = os.path.join(save_sub_folder, f'init.png')
+    init_image = (init_image + 1.0)* 127.5
+    np.clip(init_image, 0, 255, out = init_image) # clip to range 0 to 255
+    init_image = init_image.astype(np.uint8)
+    Image.fromarray(init_image[0]).save(sve_init_path)
 
     # ========== save outputs ==========
     for idx in range(args.batch_size):
@@ -255,8 +269,13 @@ def main():
         x_0 = (x_0 + 1.0)* 127.5
         np.clip(x_0, 0, 255, out = x_0) # clip to range 0 to 255
         x_0 = x_0.astype(np.uint8)
-        x_0 = Image.fromarray(x_0[0])
-        x_0.save(save_x_0_path)
+        x_1 = Image.fromarray(x_0[0])
+        x_1.save(save_x_0_path)
+
+        x_mask = (1 - mask_bw) * init_image[0] + mask_bw * x_0[0]
+        x_mask = Image.fromarray(x_mask.astype(np.uint8))
+        save_x_0_mask_path = os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_x_0_mask.png')
+        x_mask.save(save_x_0_mask_path)
 
         # save intermediate x_t and pred_x_0
         if args.display_x_inter:
@@ -305,7 +324,7 @@ def main():
         # overlay the segmentation mask on the synthesized image to visualize mask consistency
         if args.save_mixed:
             save_mixed_path =  os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_mixed.png')
-            Image.blend(x_0,mask_,0.3).save(save_mixed_path)
+            Image.blend(x_1,mask_,0.3).save(save_mixed_path)
 
 
 if __name__ == "__main__":
