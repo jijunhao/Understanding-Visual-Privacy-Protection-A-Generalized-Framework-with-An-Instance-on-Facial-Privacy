@@ -229,6 +229,8 @@ def main():
 
         if args.condition==0:
             condition=condition['text']
+            args.save_mixed = False
+            args.x_mask = False
         elif args.condition==1:
             condition=condition['seg_mask']
         elif args.condition==2:
