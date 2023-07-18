@@ -124,12 +124,14 @@ def parse_args():
         help="whether overlay the segmentation mask on the synthesized image to visualize mask consistency",
     )
 
+
     parser.add_argument(
-        "--strength",
-        type=float,
-        default=0.75,
-        help="strength for noising/unnoising. 1.0 corresponds to full destruction of information in init image",
+        "--condition",
+        type=int,
+        default=6,
+        help="0:text, 1:mask, 2:id, 3:text+mask, 4:text+id, 5:mask+id, 6:text+mask+id",
     )
+
 
     args = parser.parse_args()
     return args
@@ -160,6 +162,7 @@ def main():
     # save a copy of this python script being used
     # shutil.copyfile(__file__, os.path.join(args.save_folder, __file__))
 
+
     # ========== prepare seg mask for models ==========
     with open(args.mask_path, 'rb') as f:
         img = Image.open(f)
@@ -181,13 +184,22 @@ def main():
 
     # prepare directories
     mask_name = args.mask_path.split('/')[-1]
-    save_sub_folder = os.path.join(args.save_folder, mask_name, str(args.input_text))
+    init_name = args.init_img.split('/')[-1]
+    if args.condition in [0,4]:
+        save_sub_folder = os.path.join(args.save_folder, init_name, str(args.input_text))
+    elif args.condition in [1,5]:
+        save_sub_folder = os.path.join(args.save_folder, init_name, mask_name)
+    elif args.condition==2:
+        save_sub_folder = os.path.join(args.save_folder, init_name)
+    elif args.condition in [3,6]:
+        save_sub_folder = os.path.join(args.save_folder, init_name, mask_name, str(args.input_text))
     os.makedirs(save_sub_folder, exist_ok=True)
 
-    # save seg_mask
-    save_path_mask = os.path.join(save_sub_folder, mask_name)
-    mask_ = Image.fromarray(input_mask)
-    mask_.save(save_path_mask)
+    if args.condition in [1,3,5,6]:
+        # save seg_mask
+        save_path_mask = os.path.join(save_sub_folder, mask_name)
+        mask_ = Image.fromarray(input_mask)
+        mask_.save(save_path_mask)
 
     # mask_bw
     mask_bw = np.array(Image.open("/home/jijunhao/diffusion/data/CelebAMask-HQ/CelebAMask-HQ-mask-bw/"+mask_name).convert("L"))
@@ -208,11 +220,32 @@ def main():
     # ========== inference ==========
     with torch.no_grad():
         TestFace = indentity.TestFace()
+
         condition = {
             'seg_mask': flattened_img_tensor_one_hot_transpose,
             'text': [args.input_text.lower()],
             'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
         }
+
+        if args.condition==0:
+            condition=condition['text']
+        elif args.condition==1:
+            condition=condition['seg_mask']
+        elif args.condition==2:
+            condition=condition['id']
+            args.save_mixed = False
+            args.x_mask = False
+        elif args.condition==3:
+            condition={'text':condition['text'], 'seg_mask':condition['seg_mask']}
+        elif args.condition==4:
+            condition={'text':condition['text'], 'id':condition['id']}
+            args.save_mixed = False
+            args.x_mask = False
+        elif args.condition==5:
+            condition={'seg_mask':condition['seg_mask'], 'id':condition['id']}
+        elif args.condition==6:
+            condition=condition
+
 
         with model.ema_scope("Plotting"):
 
@@ -246,7 +279,7 @@ def main():
     mask_bw = mask_bw.permute(0, 2, 3, 1).to("cpu").numpy()[0]
     init_image = init_image.permute(0, 2, 3, 1).to('cpu').numpy()
 
-    sve_init_path = os.path.join(save_sub_folder, f'init.png')
+    sve_init_path = os.path.join(save_sub_folder, init_name)
     init_image = (init_image + 1.0)* 127.5
     np.clip(init_image, 0, 255, out = init_image) # clip to range 0 to 255
     init_image = init_image.astype(np.uint8)
@@ -320,6 +353,8 @@ def main():
             save_mixed_path =  os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_mixed.png')
             Image.blend(x_1,mask_,0.3).save(save_mixed_path)
 
+    print(f"Your samples are ready and waiting for you here: \n{args.save_folder} \n"
+          f" \nEnjoy.")
 
 if __name__ == "__main__":
     main()
