@@ -23,7 +23,7 @@ python generate_512.py --config_path "configs/512_mask.yaml"\
 python generate_512.py --config_path "configs/512_text.yaml"\
  --ckpt_path "pretrained/512_text.ckpt"\
  --init-img 'datasets/image/image_512_downsampled_from_hq_1024/29980.jpg' \
- --input_text "This man is in the fifties. The face is covered with short beard." \
+ --input_text "There is no beard This woman looks extremely young." \
  --save_folder 'outputs/inference_512_text' \
  --condition 0
 

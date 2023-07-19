@@ -16,8 +16,6 @@ model:
     monitor: val/loss_simple_ema
     scale_factor: 0.141
     use_ema: False
-    parameterization: eps
-
 
     unet_config:
       target: ldm.modules.diffusionmodules.openaimodel.UNetModel
@@ -36,7 +34,7 @@ model:
         - 2
         - 3
         - 5
-        num_heads: 64
+        num_heads: 32
         use_spatial_transformer: true
         transformer_depth: 1
         context_dim: 640
@@ -72,7 +70,7 @@ model:
 data:
   target: main.DataModuleFromConfig
   params:
-    batch_size: 4
+    batch_size: 8
     wrap: True
     train:
       target: ldm.data.celebahq.CelebAConditionalDataset
