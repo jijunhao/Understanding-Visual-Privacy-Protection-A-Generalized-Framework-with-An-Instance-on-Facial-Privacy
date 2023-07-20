@@ -186,13 +186,13 @@ def main():
     mask_name = args.mask_path.split('/')[-1]
     init_name = args.init_img.split('/')[-1]
     if args.condition in [0,4]:
-        save_sub_folder = os.path.join(args.save_folder, init_name, str(args.input_text))
+        save_sub_folder = os.path.join(args.save_folder, init_name, str(args.input_text)[:50])
     elif args.condition in [1,5]:
         save_sub_folder = os.path.join(args.save_folder, init_name, mask_name)
     elif args.condition==2:
         save_sub_folder = os.path.join(args.save_folder, init_name)
     elif args.condition in [3,6]:
-        save_sub_folder = os.path.join(args.save_folder, init_name, mask_name, str(args.input_text))
+        save_sub_folder = os.path.join(args.save_folder, init_name, mask_name, str(args.input_text)[:50])
     os.makedirs(save_sub_folder, exist_ok=True)
 
     if args.condition in [1,3,5,6]:
@@ -264,6 +264,7 @@ def main():
                 model=model,
                 return_confidence_map=args.return_influence_function)
 
+            """
                 # DDIM sampling
             z_0_batch, intermediates = ddim_sampler.sample(
                 S=args.ddim_steps,
@@ -274,6 +275,16 @@ def main():
                 eta=1.0,
                 log_every_t=1,
                 x0=init_latent)
+            """
+
+            z_0_batch, intermediates = ddim_sampler.sample(
+                S=args.ddim_steps,
+                batch_size=args.batch_size,
+                shape=(3, 64, 64),
+                conditioning=condition,
+                verbose=False,
+                eta=1.0,
+                log_every_t=1)
 
         # decode VAE latent z_0 to image x_0
         x_0_batch = model.decode_first_stage(z_0_batch) # [B, 3, 256, 256]
