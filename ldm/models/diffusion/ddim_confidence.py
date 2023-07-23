@@ -141,7 +141,7 @@ class DDIMConfidenceSampler(object):
         else:
             img = x_T
 
-        t_enc = torch.tensor([self.ddpm_num_timesteps - 1] * 4, device=device)
+        t_enc = torch.tensor([self.ddpm_num_timesteps - 1] * 8, device=device)
         # add img2img
         if x0 is not None:
             img = self.model.q_sample(x0,t_enc)

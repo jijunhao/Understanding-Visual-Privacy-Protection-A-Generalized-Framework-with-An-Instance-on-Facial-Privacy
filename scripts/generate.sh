@@ -21,7 +21,7 @@ python generate_512.py --config_path "configs/512_mask.yaml"\
 
 # text
 python generate_512.py --config_path "configs/512_text.yaml"\
- --ckpt_path "pretrained/512_text.ckpt"\
+ --ckpt_path "/home/jijunhao/diffusion/outputs/512_text/2023-07-18T18-23-19_512_text/pretrained/last.ckpt"\
  --init-img 'datasets/image/image_512_downsampled_from_hq_1024/29980.jpg' \
  --input_text "There is no beard This woman looks extremely young." \
  --save_folder 'outputs/inference_512_text' \

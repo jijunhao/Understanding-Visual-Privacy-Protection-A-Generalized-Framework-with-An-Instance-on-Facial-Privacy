@@ -76,7 +76,7 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=4,
+        default=8,
         help="number of images to generate"
     )
     parser.add_argument(
@@ -265,7 +265,7 @@ def main():
                 return_confidence_map=args.return_influence_function)
 
             """
-                # DDIM sampling
+            # DDIM sampling
             z_0_batch, intermediates = ddim_sampler.sample(
                 S=args.ddim_steps,
                 batch_size=args.batch_size,
@@ -276,7 +276,7 @@ def main():
                 log_every_t=1,
                 x0=init_latent)
             """
-
+    
             z_0_batch, intermediates = ddim_sampler.sample(
                 S=args.ddim_steps,
                 batch_size=args.batch_size,
