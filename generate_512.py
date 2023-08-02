@@ -185,14 +185,15 @@ def main():
     # prepare directories
     mask_name = args.mask_path.split('/')[-1]
     init_name = args.init_img.split('/')[-1]
+    background_name = mask_name.split(".")[0]+".jpg"
     if args.condition in [0,4]:
-        save_sub_folder = os.path.join(args.save_folder, init_name, str(args.input_text)[:50])
+        save_sub_folder = os.path.join(args.save_folder, init_name, str(args.input_text)[:50].strip())
     elif args.condition in [1,5]:
         save_sub_folder = os.path.join(args.save_folder, init_name, mask_name)
     elif args.condition==2:
         save_sub_folder = os.path.join(args.save_folder, init_name)
     elif args.condition in [3,6]:
-        save_sub_folder = os.path.join(args.save_folder, init_name, mask_name, str(args.input_text)[:50])
+        save_sub_folder = os.path.join(args.save_folder, init_name, mask_name, str(args.input_text)[:50].strip())
     os.makedirs(save_sub_folder, exist_ok=True)
 
     if args.condition in [1,3,5,6]:
@@ -216,6 +217,9 @@ def main():
     init_image = repeat(init_image, '1 ... -> b ...', b=args.batch_size)
     init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space
 
+
+    background_image = load_img("/home/jijunhao/diffusion/datasets/image/image_512_downsampled_from_hq_1024/"+background_name).to(device)
+    background_image = repeat(background_image, '1 ... -> b ...', b=args.batch_size)
 
     # ========== inference ==========
     with torch.no_grad():
@@ -298,6 +302,14 @@ def main():
     init_image = init_image.astype(np.uint8)
     Image.fromarray(init_image[0]).save(sve_init_path)
 
+    sve_background_path = os.path.join(save_sub_folder, background_name)
+    background_image = background_image.permute(0, 2, 3, 1).to('cpu').numpy()
+    background_image = (background_image + 1.0)* 127.5
+    np.clip(background_image, 0, 255, out=background_image)  # clip to range 0 to 255
+    background_image = background_image.astype(np.uint8)
+    Image.fromarray(background_image[0]).save(sve_background_path)
+
+
     # ========== save outputs ==========
     for idx in range(args.batch_size):
 
@@ -312,7 +324,7 @@ def main():
         x_1.save(save_x_0_path)
 
         if args.x_mask:
-            x_mask = (1 - mask_bw) * init_image[0] + mask_bw * x_0[0]
+            x_mask = (1 - mask_bw) * background_image[0] + mask_bw * x_0[0]
             x_mask = Image.fromarray(x_mask.astype(np.uint8))
             save_x_0_mask_path = os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_x_0_mask.png')
             x_mask.save(save_x_0_mask_path)
@@ -336,7 +348,7 @@ def main():
 
         # save influence functions
         if args.return_influence_function:
-            for cond_name in ['seg_mask', 'text']:
+            for cond_name in ['seg_mask', 'text','id']:
                 save_conf_path = os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_{cond_name}_influence_function.png')
                 conf = intermediates[f'{cond_name}_confidence_map']
                 conf = torch.stack(conf, dim=0)  # 50x8x1x64x64
@@ -365,6 +377,8 @@ def main():
         if args.save_mixed:
             save_mixed_path =  os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_mixed.png')
             Image.blend(x_1,mask_,0.3).save(save_mixed_path)
+            save_mixed_path = os.path.join(save_sub_folder, f'{str(idx).zfill(6)}_mask_mixed.png')
+            Image.blend(x_mask, mask_, 0.3).save(save_mixed_path)
 
     print(f"Your samples are ready and waiting for you here: \n{args.save_folder} \n"
           f" \nEnjoy.")

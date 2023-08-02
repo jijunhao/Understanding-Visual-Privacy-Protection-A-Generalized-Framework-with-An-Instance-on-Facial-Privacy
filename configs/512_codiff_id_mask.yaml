@@ -21,9 +21,10 @@ model:
     seg_mask_ldm_config_path: configs/512_mask.yaml
     seg_mask_ldm_ckpt_path: pretrained/512_mask.ckpt
     text_ldm_config_path: configs/512_text.yaml
-    text_ldm_ckpt_path: pretrained/512_text.ckpt
+    text_ldm_ckpt_path: /home/jijunhao/diffusion/outputs/512_text/2023-07-18T18-23-19_512_text/pretrained/last.ckpt
     id_ldm_config_path: configs/512_id.yaml
-    id_ldm_ckpt_path: pretrained/512_id.ckpt
+    id_ldm_ckpt_path: /home/jijunhao/diffusion/outputs/512_id/2023-07-01T21-06-39_512_id/pretrained/last.ckpt
+
 
     compose_unet_config:
       target: ldm.models.diffusion.compose_modules_new.ComposeUNet
