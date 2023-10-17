@@ -228,7 +228,8 @@ def main():
         condition = {
             'seg_mask': flattened_img_tensor_one_hot_transpose,
             'text': [args.input_text.lower()],
-            'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
+            # 'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
+            'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models) + torch.normal(mean=0.0, std=0.5, size=(1, 512)).to('cuda:0')
         }
 
         if args.condition==0:

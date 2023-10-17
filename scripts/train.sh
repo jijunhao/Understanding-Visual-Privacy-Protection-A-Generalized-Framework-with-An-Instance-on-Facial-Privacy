@@ -6,6 +6,9 @@ python main.py --logdir 'outputs/512_codiff_id_mask'\
  --base 'configs/512_codiff_id_mask.yaml' -t --gpus 0,\
  -r '/home/jijunhao/diffusion/outputs/512_codiff_id_mask/2023-07-16T13-29-40_512_codiff_id_mask'
 
+# 50 epoch vae
+# 166 epoch codiff_mask_text
+
 # 117 epoch
 python main.py --logdir 'outputs/512_id'\
  --base 'configs/512_id.yaml' -t --gpus 0, \

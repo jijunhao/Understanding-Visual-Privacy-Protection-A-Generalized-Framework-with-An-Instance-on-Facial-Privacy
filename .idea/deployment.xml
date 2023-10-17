@@ -1,15 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="jijunhao@10.123.1.189:2206 password" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="jijunhao@10.123.1.37:2206 password" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="jijunhao@10.123.1.189:2204 password">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/diffusion" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="jijunhao@10.123.1.189:2206 password">
+      <paths name="jijunhao@10.123.1.37:2206 password">
         <serverdata>
           <mappings>
             <mapping deploy="/diffusion" local="$PROJECT_DIR$" />
