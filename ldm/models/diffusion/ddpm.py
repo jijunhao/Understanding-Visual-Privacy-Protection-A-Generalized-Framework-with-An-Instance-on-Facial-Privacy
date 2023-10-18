@@ -1074,7 +1074,7 @@ class LatentDiffusion(DDPM):
             # id_part = cond[:, :1, :].squeeze(1)
             pred_id =TestFace.pred_id(self.decode_first_stage(recon),'ir152',TestFace.targe_models)
             loss_id = 1 - torch.cosine_similarity(id_part, pred_id)
-            loss_id =loss_id.max().item()  # 取batch里面最大的损失，加速训练
+            loss_id = loss_id.max().item()  # 取batch里面最大的损失，加速训练
             loss_dict.update({f'{prefix}/loss_id': loss_id})
 
             loss += (self.id_weight * loss_id)

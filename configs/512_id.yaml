@@ -17,6 +17,7 @@ model:
     scale_factor: 0.141
     use_ema: False
     parameterization: eps
+    loss_id: true
 
 
     unet_config:
