@@ -1067,7 +1067,7 @@ class LatentDiffusion(DDPM):
 
         if self.loss_id:
             # add face id loss
-            recon=self.predict_start_from_noise(x_start, t=t, noise=model_output)
+            recon=self.predict_start_from_noise(x_noisy, t=t, noise=model_output)
             TestFace = indentity.TestFace()
             id_part = cond.squeeze(1)
             # text_id
