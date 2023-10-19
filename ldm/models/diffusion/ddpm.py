@@ -451,7 +451,7 @@ class LatentDiffusion(DDPM):
                  conditioning_key=None,
                  scale_factor=1.0,
                  scale_by_std=False,
-                 loss_id = False,         # 是否计算loss_id
+                 c_loss_id = False,         # 是否计算loss_id
                  *args, **kwargs):
         self.num_timesteps_cond = default(num_timesteps_cond, 1)
         self.scale_by_std = scale_by_std
@@ -487,7 +487,7 @@ class LatentDiffusion(DDPM):
             print("init_form_ckpt done:", ckpt_path)
             self.restarted_from_ckpt = True
 
-        self.loss_id = loss_id
+        self.c_loss_id = c_loss_id
         self.id_weight = 1 # 计算loss_id
 
     def make_cond_schedule(self, ):
@@ -1065,7 +1065,7 @@ class LatentDiffusion(DDPM):
         loss_dict.update({f'{prefix}/loss_vlb': loss_vlb})
         loss += (self.original_elbo_weight * loss_vlb)
 
-        if self.loss_id:
+        if self.c_loss_id:
             # add face id loss
             recon=self.predict_start_from_noise(x_noisy, t=t, noise=model_output)
             TestFace = indentity.TestFace()
