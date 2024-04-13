@@ -18,7 +18,7 @@ from einops import rearrange, repeat
 from ldm.models.diffusion.ddim import DDIMSampler
 from PIL import Image
 
-from models import indentity
+from models import identity
 """
 Inference script for multi-modal-driven face generation at 512x512 resolution
 """
@@ -223,13 +223,15 @@ def main():
 
     # ========== inference ==========
     with torch.no_grad():
-        TestFace = indentity.TestFace()
+        TestFace = identity.TestFace()
 
         condition = {
             'seg_mask': flattened_img_tensor_one_hot_transpose,
             'text': [args.input_text.lower()],
             # 'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models)
-            'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models) + torch.normal(mean=0.0, std=0.5, size=(1, 512)).to('cuda:0')
+            #'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models) + torch.normal(mean=0.0, std=1, size=(1, 512)).to('cuda:0')
+            'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models) + 30*torch.load('noise.pt')
+            #'id': TestFace.pred_id(init_image, 'ir152', TestFace.targe_models) + torch.distributions.laplace.Laplace(0, 100).sample((1,512)).to('cuda:0')
         }
 
         if args.condition==0:

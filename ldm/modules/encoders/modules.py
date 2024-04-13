@@ -10,7 +10,7 @@ from ldm.modules.x_transformer import Encoder, TransformerWrapper  # TODO: can w
 from ldm.util import instantiate_from_config_vq_diffusion
 
 
-from models import indentity
+from models import identity
 import numpy as np
 
 class AbstractEncoder(nn.Module):

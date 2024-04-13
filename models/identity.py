@@ -26,8 +26,8 @@ class TestFace():
 
     def facemodels(self):
         self.targe_models = {}
-        #selected=['ir152','irse50','facenet','mobile_face']
-        selected=['ir152']
+        selected=['ir152','irse50','facenet','mobile_face']
+        #selected=['ir152']
         for model in selected:
             if model == 'ir152':
                 self.targe_models[model] = []

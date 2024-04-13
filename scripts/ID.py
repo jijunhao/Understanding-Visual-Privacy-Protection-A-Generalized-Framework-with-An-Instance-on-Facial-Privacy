@@ -10,7 +10,7 @@ import numpy as np
 import torch
 import cv2
 import os
-from models import indentity
+from models import identity
 TestFace = indentity.TestFace()
 
 data = cv2.imread("")

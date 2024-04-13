@@ -25,7 +25,7 @@ from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, Autoenc
 from ldm.modules.diffusionmodules.util import make_beta_schedule, extract_into_tensor, noise_like
 from ldm.models.diffusion.ddim import DDIMSampler
 
-from models import indentity
+from models import identity
 
 __conditioning_keys__ = {'concat': 'c_concat',
                          'crossattn': 'c_crossattn',
